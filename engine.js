@@ -104,3 +104,116 @@ class Actor {
         this.pos.y += this.vel.y;
     }
 }
+
+/** A class to implement a ball in pong */
+class Ball extends Actor {
+    /**
+     * Instantiate a ball object
+     * @param {Bounds} bounds
+     * @param {number} radius
+     * @param {FillStyle} fillStyle
+     * @param {Vector2} initPos
+     * @param {Vector2} initVel
+     * @param {CanvasRenderingContext2D}
+     */
+    constructor(bounds, radius, fillStyle, initPos, initVel, context) {
+        /** @type {Bounds} */
+        this.bounds = bounds;
+        /** @type {number} */
+        this.radius = radius;
+        /** @type {Vector2} */
+        this.size = {x: 2 * radius, y: 2 * radius};
+        /** @type {FillStyle} */
+        this.fillStyle = fillStyle;
+        /** @type {Vector2} */
+        this.pos = initPos;
+        /** @type {Vector2} */
+        this.vel = initVel;
+        /** @type {CanvasRenderingContext2D} */
+        this.context = context;
+        /** @type {Actor[]} */
+        this.colliders = [];
+        /** @type {number} */
+        this.collisionCooldown = 0;
+    }
+
+    /**
+     * @param {Actor} collider
+     */
+    addCollider(collider) {
+        this.colliders.push(collider);
+    }
+
+    /**
+     * Draw the ball on the canvas.
+     */
+    draw() {
+        this.context.beginPath();
+        this.context.arc(this.pos.x, this.pos.y, this.radius, 0, math.PI*2);
+        this.context.fillStyle = this.fillStyle;
+        this.context.fill();
+        this.context.closePath();
+    }
+
+   /*
+    * For collision logic, check for collisions before they
+    * happen, by checking if the distance is less than vel,
+    * and calculating the point of collision and what portion
+    * of the velocity will be left to move after the collision
+    */
+}
+
+/** A class to implement the paddles */
+class Paddle extends Actor {
+    /**
+     * Constructor for Paddle
+     * @param {Bounds} bounds - The limits of where the paddle can go
+     * @param {Vector2} size - The size of the rectangular paddle
+     * @param {FillStyle} fillStyle - the fill style to pass to the context during the draw step
+     * @param {Vector2} initPos - The initial position of the centre of the paddle
+     * @param {Vector2} vel - The initial velocity components of the paddle
+     * @param {string[]} upKeys - A list of the keys used to send a "move up" signal
+     * @param {string[]} downKeys - A list of the keys used to send a "move down" signal
+     * @param {CanvasRenderingContext2D} context
+     */
+    constructor(bounds, size, fillStyle, initPos, initVel, upKeys, downKeys, context) {
+        /** @type {Bounds} */
+        this.bounds = bounds;
+        /** @type {Vector2} */
+        this.size = size;
+        /** @type {FillStyle} */
+        this.fillStyle = fillStyle;
+        /** @type {Vector2} */
+        this.pos = initPos;
+        /** @type {Vector2} */
+        this.vel = initVel;
+        /** @type {string[]} */
+        this.upKeys = upKeys;
+        /** @type {string[]} */
+        this.downKeys = downKeys;
+        /** @type {CanvasRenderingContext2D} */
+        this.context = context;
+        /** @type {boolean} */
+        this.upPressed = false;
+        /** @type {boolean} */
+        this.downPressed = false;
+    }
+
+    updatePos() {
+        this.updateVel();
+        this.boundsClamp();
+        this.bounceCheck();
+        this.pos.x += this.vel.x;
+        this.pos.y += this.vel.y;
+    }
+
+    updateVel() {
+        if (this.upPressed) {
+            this.vel.y -= 0.2;
+        }
+        else if (this.downPressed) {
+            this.vel.y += 0.2;
+        }
+        this.vel.y -= 0.04 * this.vel.y;
+    }
+}
