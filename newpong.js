@@ -1,4 +1,4 @@
-//import { Bounds, Vector2, Ball, Paddle } from "engine.js";
+import { Bounds, Vector2, Ball, Paddle } from "engine.js";
 
 const canvas = document.getElementById("timsCanvas");
 /** @type {CanvasRenderingContext2D} */
