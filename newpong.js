@@ -1,4 +1,8 @@
-import { Bounds, Vector2, Ball, Paddle } from "engine.js";
+import { Vector2, Ball, Paddle } from "./engine.js";
+
+/**
+ * @typedef {import("./engine.js").Bounds} Bounds
+ */
 
 const canvas = document.getElementById("timsCanvas");
 /** @type {CanvasRenderingContext2D} */
@@ -17,7 +21,7 @@ let padA = new Paddle(canvasBounds, new Vector2(10, 50), "#22aa33", new Vector2(
 controllable.push(padA);
 blob.addCollider(padA);
 
-let padB = new Paddle(canvasBounds, new Vector2(10, 50), "#2233aa", new Vector2(canvasBounds.maxX - 15, canvasBounds.maxy / 2), new Vector2(0, 0), ["Up", "ArrowUp"], ["Down, ArrowDown"], ctx);
+let padB = new Paddle(canvasBounds, new Vector2(10, 50), "#2233aa", new Vector2(canvasBounds.maxX - 15, canvasBounds.maxY / 2), new Vector2(0, 0), ["Up", "ArrowUp"], ["Down", "ArrowDown"], ctx);
 
 controllable.push(padB);
 blob.addCollider(padB);
@@ -34,7 +38,7 @@ function keyDownHandler(event) {
 }
 
 function keyUpHandler(event) {
-    for (actor of controllable) {
+    for (var actor of controllable) {
         if (actor.upKeys.includes(event.key)) {
             actor.upPressed = false;
         }

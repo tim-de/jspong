@@ -125,7 +125,7 @@ export class Vector2 {
 
 
 /** A class representing a generic actor in a scene */
-class Actor {
+export class Actor {
     /**
      * Create a new Actor
      * @param {Bounds} bounds - The area the actor is limited to
@@ -202,7 +202,7 @@ class Actor {
     }
 }
 
-/** A class to implement a ball in pong */
+/** a class to implement a ball in pong */
 export class Ball extends Actor {
     /**
      * Instantiate a ball object
@@ -246,8 +246,9 @@ export class Ball extends Actor {
      * @return {Vector2}
      */
     getClosestCorner(collider) {
-        return new Vector2(collider.pos.x + (collider.size.x * Math.sign(this.pos.x - collider.pos.x)),
-                           collider.pos.y + (collider.size.y * Math.sign(this.pos.y - collider.pos.y)));
+        return new Vector2(
+            collider.pos.x + ((collider.size.x/2) * Math.sign(this.pos.x - collider.pos.x)),
+            collider.pos.y + ((collider.size.y/2) * Math.sign(this.pos.y - collider.pos.y)));
     }
 
     /**
@@ -265,7 +266,7 @@ export class Ball extends Actor {
         let b = - (2 * to_corner.x * this.vel.x) - (2 * to_corner.y * this.vel.y);
         let c = Math.pow(to_corner.x, 2) + Math.pow(to_corner.y, 2) - Math.pow(this.radius, 2);
         if (Math.pow(b, 2) - (4 * a * c) >= 0) {
-            return (-b - Math.sqrt(Math.pow(b, 2) - 4 * a * c)) / (2 * a);
+            return (-b - Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
         }
         else {
             return NaN;
@@ -279,47 +280,84 @@ export class Ball extends Actor {
      * @param {Vector2} corner
      * @return {boolean}
      */
-    cornerCollision(corner) {
+    cornerCollision(corner, collider) {
         let proportion = this.velProportionToCorner(corner);
-        if (proportion == NaN) {
+        if (Number.isNaN(proportion)) {
             return false;
         }
         let to_collision = this.vel.scale(proportion);
         let pos_at_collision = this.pos.add(to_collision);
         let normal = pos_at_collision.subtract(corner).normalise();
-        let reflected = this.vel.subtract(to_collision).reflect(normal);
+        let reflected = this.vel.subtract(to_collision).reflect(normal).add(new Vector2(0, collider.vel.y));
         this.pos.link(to_collision.add(reflected));
         this.vel.reflect(normal);
         return true;
     }
 
     /**
+     * @param {number} edge_x
+     * @return {boolean}
+     */
+    edgeCollisionV(edge_x) {
+        let x_to_collision = edge_x - this.pos.x - (this.radius * Math.sign(edge_x - this.pos.x));
+        if (x_to_collision > this.radius) {
+            return false;
+        }
+        let x_from_collision = this.vel.x - x_to_collision;
+        let collision_delta = new Vector2(this.vel.x - (2 * x_from_collision), this.vel.y);
+        this.pos.link(collision_delta);
+        this.vel.x = -this.vel.x;
+        return true;
+    }
+
+    /**
+     * @param {number} edge_y
+     * @param {Actor} collider
+     * @return {boolean}
+     */
+    edgeCollisionH(edge_y, collider) {
+        let y_to_collision = edge_y - this.pos.y - (this.radius * Math.sign(edge_y - this.pos.y));
+        if (y_to_collision > this.radius) {
+            return false;
+        }
+        let y_from_collision = this.vel.y - y_to_collision;
+        let collision_delta = new Vector2(this.vel.x, (this.vel.y - (2 * y_from_collision)) + collider.vel.y);
+        this.pos.link(collision_delta);
+        this.vel.y = -this.vel.y;
+        return true;
+    }
+    
+    /**
      * @param {Actor} collider
      * @return {boolean}
      */
     collisionCheck(collider) {
-        if (Math.abs(this.pos.x - collider.pos.x) - (this.radius + (collider.size.x / 2)) <= Math.abs(this.vel.x) && Math.abs(this.pos.y - collider.pos.y) < collider.size.y / 2) {
-            // Colliding with a vertical face
-            let x_to_collision = this.vel.x - ((collider.pos.x - this.pos.x) - (this.radius + (collider.size.x / 2)));
-            // Simplify this, it's probably possible
-            this.pos.x += this.vel.x - (2 * (this.vel.x - x_to_collision));
-            this.pos.y += this.vel.y;
-            this.vel.x = -this.vel.x;
-            return true;
+        
+        let is_close_h = Math.abs(this.pos.x - collider.pos.x) - (this.radius + (collider.size.x / 2)) <= this.vel.x;
+        let is_aligned_v = Math.abs(this.pos.y - collider.pos.y) < collider.size.y / 2;
+        let is_moving_towards_h = Math.sign(collider.pos.x - this.pos.x) == Math.sign(this.vel.x);
+
+        let is_close_v = Math.abs(this.pos.y - collider.pos.y) - (this.radius + (collider.size.y / 2)) <= this.vel.y;
+        let is_aligned_h = Math.abs(this.pos.x - collider.pos.x) < collider.size.x / 2;
+        let is_moving_towards_v = Math.sign(collider.pos.y - this.pos.y) == Math.sign(this.vel.y);
+
+        let is_close_corner = is_close_h && is_close_v;
+        //let is_moving_towards_corner = is_moving_towards_h || is_moving_towards_v;
+
+        if (is_close_h && is_aligned_v && is_moving_towards_h) {
+            let nearest_edge_x = collider.pos.x + ((collider.size.x / 2) * Math.sign(this.pos.x - collider.pos.x));
+            return this.edgeCollisionV(nearest_edge_x);
         }
-        else if (Math.abs(this.pos.y - collider.pos.y) - (this.radius + collider.size.y) <= Math.abs(this.vel.y - collider.vel.y) && Math.abs(this.pos.x - collider.pos.x) < collider.size.x / 2) {
+        else if (is_close_v && is_aligned_h && is_moving_towards_v) {
             // Colliding with a horizontal face
-            let y_to_collision = this.vel.y - ((collider.pos.y - this.pos.y) - (this.radius + (collider.size.y / 2)));
-            this.pos.y += this.vel.x - (2 * (this.vel.x - y_to_collision));
-            this.pos.x += this.vel.x;
-            this.vel.y = -this.vel.y;
-            return true;
+            let nearest_edge_y = collider.pos.y + ((collider.size.y / 2) * Math.sign(this.pos.x - collider.pos.x));
+            return this.edgeCollisionH(nearest_edge_y, collider);
         }
-        else if (Math.abs(this.pos.x - collider.pos.x) - (this.radius + collider.size / 2) <= Math.abs(this.vel.x) && Math.abs(this.pos.y - collider.pos.y) - (this.radius + collider.size.y) <= Math.abs(this.vel.y - collider.vel.y)) {
+        else if (is_close_corner) {
             // Maybe colliding with a corner
             // Do further check and handle possible collision
             let closest_corner = this.getClosestCorner(collider);
-            return this.cornerCollision(closest_corner);
+            return this.cornerCollision(closest_corner, collider);
         }
         return false;
     }

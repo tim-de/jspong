@@ -1,6 +1,6 @@
 import {expect, test, describe} from "bun:test";
 
-import { Vector2, Ball } from "./engine.js";
+import { Vector2, Ball, Actor } from "./engine.js";
 
 /**
  * Determine if two values are very close (within floating-point error)
@@ -72,14 +72,104 @@ describe("Ball collision with corner (manually)", () => {
     });
 });
 
+describe("Find closest corner", () => {
+    let testBounds = {minX: -100, minY: -100, maxX: 100, maxY: 100};
+    let testCtx = null;
+    let testBall = new Ball(testBounds, 10, "#112233", new Vector2(0, 0), new Vector2(8, 6), testCtx);
+    test("Collider at +x, +y", () => {
+        let testCollider = new Actor(testBounds, new Vector2(9, 18), new Vector2(0,0), new Vector2(10,10), "#001122", testCtx);
+        let corner = testBall.getClosestCorner(testCollider);
+        expect(almostEqual(corner.x, 4)).toBeTruthy();
+        expect(almostEqual(corner.y, 13)).toBeTruthy();
+    });
+    test("Collider at +x, -y", () => {
+        let testCollider = new Actor(testBounds, new Vector2(9, -18), new Vector2(0,0), new Vector2(10,10), "#001122", testCtx);
+        let corner = testBall.getClosestCorner(testCollider);
+        expect(almostEqual(corner.x, 4)).toBeTruthy();
+        expect(almostEqual(corner.y, -13)).toBeTruthy();
+    });
+    test("Collider at -x, +y", () => {
+        let testCollider = new Actor(testBounds, new Vector2(-9, 18), new Vector2(0,0), new Vector2(10,10), "#001122", testCtx);
+        let corner = testBall.getClosestCorner(testCollider);
+        expect(almostEqual(corner.x, -4)).toBeTruthy();
+        expect(almostEqual(corner.y, 13)).toBeTruthy();
+    });
+    test("Collider at -x, -y", () => {
+        let testCollider = new Actor(testBounds, new Vector2(-9, -18), new Vector2(0,0), new Vector2(10,10), "#001122", testCtx);
+        let corner = testBall.getClosestCorner(testCollider);
+        expect(almostEqual(corner.x, -4)).toBeTruthy();
+        expect(almostEqual(corner.y, -13)).toBeTruthy();
+    });
+});
+
+describe("Find proportion to corner", () => {
+    let testBounds = {minX: -100, minY: -100, maxX: 100, maxY: 100};
+    let testCtx = null;
+    test("Corner at +x, +y", () => {
+        let testBall = new Ball(testBounds, 10, "#112233", new Vector2(0, 0), new Vector2(8, 6), testCtx);
+        let corner = new Vector2(4, 13);
+        let proportion = testBall.velProportionToCorner(corner);
+        expect(almostEqual(proportion, 0.5)).toBeTruthy();
+    });
+    test("Corner at +x, -y", () => {
+        let testBall = new Ball(testBounds, 10, "#112233", new Vector2(0, 0), new Vector2(8, -6), testCtx);
+        let corner = new Vector2(4, -13);
+        let proportion = testBall.velProportionToCorner(corner);
+        expect(almostEqual(proportion, 0.5)).toBeTruthy();
+    });
+    test("Corner at -x, +y", () => {
+        let testBall = new Ball(testBounds, 10, "#112233", new Vector2(0, 0), new Vector2(-8, 6), testCtx);
+        let corner = new Vector2(-4, 13);
+        let proportion = testBall.velProportionToCorner(corner);
+        expect(almostEqual(proportion, 0.5)).toBeTruthy();
+    });
+    test("Corner at -x, -y", () => {
+        let testBall = new Ball(testBounds, 10, "#112233", new Vector2(0, 0), new Vector2(-8, -6), testCtx);
+        let corner = new Vector2(-4, -13);
+        let proportion = testBall.velProportionToCorner(corner);
+        expect(almostEqual(proportion, 0.5)).toBeTruthy();
+    });
+});
+
 test("Ball collision with corner (using cornerCollision)", () => {
     let testBounds = {minX: -100, minY: -100, maxX: 100, maxY: 100};
     let testCtx = null;
     let testBall = new Ball(testBounds, 10, "#112233", new Vector2(0, 0), new Vector2(8, 6), testCtx);
-    let corner = new Vector2(4, 13);
-    testBall.cornerCollision(corner);
+    let testCollider = new Actor(testBounds, new Vector2(9, 18), new Vector2(0,0), new Vector2(10,10), "#001122", testCtx);
+    let corner = testBall.getClosestCorner(testCollider);
+    expect(almostEqual(corner.x, 4)).toBeTruthy();
+    expect(almostEqual(corner.y, 13)).toBeTruthy();
+    testBall.cornerCollision(corner, testCollider);
     expect(almostEqual(testBall.pos.x, 8)).toBeTruthy();
     expect(almostEqual(testBall.pos.y, 0)).toBeTruthy();
     expect(almostEqual(testBall.vel.x, 8)).toBeTruthy();
     expect(almostEqual(testBall.vel.y, -6)).toBeTruthy();
 });
+
+test("Ball collision with vertical edge (manually)", () => {
+    let testBounds = {minX: -100, minY: -100, maxX: 100, maxY: 100};
+    let testCtx = null;
+    let testBall = new Ball(testBounds, 10, "#112233", new Vector2(2, 0), new Vector2(6, 6), testCtx);
+    let edgex = 16;
+    let to_collision = testBall.vel.x - (edgex - (testBall.pos.x +  testBall.radius));
+    let from_collision = testBall.vel.x - to_collision;
+    let collision_delta = new Vector2(testBall.vel.x - (2 * from_collision), testBall.vel.y);
+    testBall.pos.link(collision_delta);
+    testBall.vel.x = -testBall.vel.x;
+    expect(testBall.pos.x).toEqual(0);
+    expect(almostEqual(testBall.pos.y, 6)).toBeTruthy();
+    expect(almostEqual(testBall.vel.x, -6)).toBeTruthy();
+    expect(almostEqual(testBall.vel.y, 6)).toBeTruthy();
+});
+
+test("Ball collision with vertical edge (using edgeCollisionV)", () => {
+    let testBounds = {minX: -100, minY: -100, maxX: 100, maxY: 100};
+    let testCtx = null;
+    let testBall = new Ball(testBounds, 10, "#112233", new Vector2(0, 0), new Vector2(6, 6), testCtx);
+    let edgex = 14;
+    testBall.edgeCollisionV(edgex);
+    expect(testBall.pos.x).toEqual(2);
+    expect(almostEqual(testBall.pos.y, 6)).toBeTruthy();
+    expect(almostEqual(testBall.vel.x, -6)).toBeTruthy();
+    expect(almostEqual(testBall.vel.y, 6)).toBeTruthy();
+}); 
